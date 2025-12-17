@@ -3,35 +3,42 @@ from modelos.Solicitud import Solicitud
 from modelos.Contenedor import ResultadoOperacion
 
 class GestorSolicitudes:
+    #=============== Constructor de la clase =====================
     def __init__(self):
         self.cola_solicitudes = ColaPrioridad()
         self.historial = None
 
+
+
+    #============================= función para agregar solicitud ===============================
     def agregar_solicitud(self, id_solicitud, cliente, tipo, prioridad, cpu, ram, almacenamiento, tiempo_estimado):
         if tipo not in ("Deploy", "Backup"):
-            # CORREGIDO: Retorna objeto ResultadoOperacion
+
             return ResultadoOperacion(False, f"Tipo de solicitud invalido: {tipo}. Debe ser 'Deploy' o 'Backup'")
         
         prioridad_num = int(prioridad)
         if prioridad_num < 1 or prioridad_num > 10:
-            # CORREGIDO: Retorna objeto ResultadoOperacion
+
             return ResultadoOperacion(False, f"Prioridad invalida: {prioridad}. Debe estar entre 1 y 10")
         
         nueva_solicitud = Solicitud(id_solicitud, cliente, tipo, prioridad_num, cpu, ram, almacenamiento, tiempo_estimado)
         self.cola_solicitudes.encolar(nueva_solicitud)
         
-        # CORREGIDO: Retorna objeto ResultadoOperacion
         return ResultadoOperacion(True, f"Solicitud {id_solicitud} agregada a la cola con prioridad {prioridad_num}")
     
+
+
+
+    #=========================== función para enconlar solicitudes ====================================
     def encolar_solicitud(self, solicitud):
         """Encola una solicitud ya creada directamente a la cola de prioridad"""
         self.cola_solicitudes.encolar(solicitud)
-        # CORREGIDO: Retorna objeto ResultadoOperacion
         return ResultadoOperacion(True, f"Solicitud {solicitud.id_solicitud} encolada con prioridad {solicitud.prioridad}")
 
+
+    #=========== función para procesar la siguiente solicitud =============================
     def procesar_siguiente_solicitud(self, lista_centros):
         if self.cola_solicitudes.esta_vacia():
-            # CORREGIDO: Retorna objeto ResultadoOperacion
             return ResultadoOperacion(False, "No hay solicitudes pendientes en la cola")
         
         solicitud = self.cola_solicitudes.desencolar()
@@ -41,19 +48,18 @@ class GestorSolicitudes:
         elif solicitud.tipo == "Backup":
             return self.procesar_backup(solicitud, lista_centros)
         
-        # CORREGIDO: Retorna objeto ResultadoOperacion
         return ResultadoOperacion(False, f"Tipo de solicitud desconocido: {solicitud.tipo}")
 
+
+
+    #========================= función para procesar un deploy ==============================================
     def procesar_deploy(self, solicitud, lista_centros):
         centro_seleccionado = self.encontrar_centro_con_mas_recursos(lista_centros, solicitud.cpu, solicitud.ram, solicitud.almacenamiento)
         
         if centro_seleccionado is None:
             solicitud.estado = "Rechazada - Sin recursos"
-            # CORREGIDO: Retorna objeto ResultadoOperacion
             return ResultadoOperacion(False, f"Solicitud {solicitud.id_solicitud} rechazada. No hay centros con recursos suficientes")
         
-        # CORRECCIÓN CLAVE: Almacenamos el resultado en una variable única para evitar la desestructuración de tuplas.
-        # ASUMIMOS que centro_seleccionado.crear_vm retorna ahora un ResultadoOperacion.
         resultado_vm = centro_seleccionado.crear_vm(
             solicitud.id_solicitud,
             "Sistema Automatico",
@@ -65,23 +71,20 @@ class GestorSolicitudes:
         
         if resultado_vm.exito:
             solicitud.estado = "Completada - Deploy"
-            # CORREGIDO: Retorna objeto ResultadoOperacion
             return ResultadoOperacion(True, f"Deploy exitoso: VM {solicitud.id_solicitud} creada en {centro_seleccionado.nombre}. Cliente: {solicitud.cliente}")
         else:
             solicitud.estado = "Rechazada - Error al crear VM"
-            # CORREGIDO: Retorna objeto ResultadoOperacion y usa resultado_vm.mensaje
             return ResultadoOperacion(False, f"Error en Deploy: {resultado_vm.mensaje}")
 
+
+    # ======================================= función para procesar un backup ==============================================
     def procesar_backup(self, solicitud, lista_centros):
         centro_seleccionado = self.encontrar_centro_con_mas_recursos(lista_centros, solicitud.cpu, solicitud.ram, solicitud.almacenamiento)
         
         if centro_seleccionado is None:
             solicitud.estado = "Rechazada - Sin recursos"
-            # CORREGIDO: Retorna objeto ResultadoOperacion
             return ResultadoOperacion(False, f"Solicitud {solicitud.id_solicitud} rechazada. No hay centros con recursos suficientes")
         
-        # CORRECCIÓN CLAVE: Almacenamos el resultado en una variable única para evitar la desestructuración de tuplas.
-        # ASUMIMOS que centro_seleccionado.crear_vm retorna ahora un ResultadoOperacion.
         resultado_vm = centro_seleccionado.crear_vm(
             f"{solicitud.id_solicitud}_BKP",
             "Sistema Backup - Suspendida",
@@ -93,13 +96,15 @@ class GestorSolicitudes:
         
         if resultado_vm.exito:
             solicitud.estado = "Completada - Backup"
-            # CORREGIDO: Retorna objeto ResultadoOperacion
+            
             return ResultadoOperacion(True, f"Backup exitoso: VM {solicitud.id_solicitud}_BKP creada en estado suspendido en {centro_seleccionado.nombre}. Cliente: {solicitud.cliente}")
         else:
             solicitud.estado = "Rechazada - Error al crear VM"
-            # CORREGIDO: Retorna objeto ResultadoOperacion y usa resultado_vm.mensaje
             return ResultadoOperacion(False, f"Error en Backup: {resultado_vm.mensaje}")
 
+
+
+    #============================== función para encontrar centros con más recursos ==================================
     def encontrar_centro_con_mas_recursos(self, lista_centros, cpu_requerida, ram_requerida, almacenamiento_requerido):
         if lista_centros.primero is None:
             return None
@@ -130,11 +135,16 @@ class GestorSolicitudes:
         
         return centro_con_mas_recursos
 
+
+
+    #======= función ver cola de solicitudes ====================
     def ver_cola_solicitudes(self):
         if self.cola_solicitudes.esta_vacia():
             return "No hay solicitudes en la cola"
         
         return self.cola_solicitudes.mostrar_todas()
 
+
+    #======= función obtener cantidad de pendientes ================
     def obtener_cantidad_pendientes(self):
         return self.cola_solicitudes.size
