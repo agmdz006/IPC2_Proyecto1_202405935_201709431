@@ -1,10 +1,13 @@
 from TDAs.Nodo import Nodo
 
 class ColaPrioridad:
+    #====== constructor de la clase ============
     def __init__(self):
         self.primero = None
         self.size = 0
 
+
+    #========= función encolar ==============================
     def encolar(self, solicitud):
         nodo_solicitud_nueva = Nodo(solicitud)
         
@@ -26,6 +29,8 @@ class ColaPrioridad:
         
         self.size += 1
 
+
+    #=============== función desencolar ===============================
     def desencolar(self):
         if self.primero is None:
             return None
@@ -36,14 +41,20 @@ class ColaPrioridad:
         self.size -= 1
         return solicitud_prioritaria
 
+
+    #========= función para ver primer elemento ====================
     def ver_primero(self):
         if self.primero is None:
             return None
         return self.primero.dato
 
+
+    #========= función para ver si está vacía =====================
     def esta_vacia(self):
         return self.primero is None
 
+
+    #========= función para mostrar todo =====================
     def mostrar_todas(self):
         if self.primero is None:
             return
