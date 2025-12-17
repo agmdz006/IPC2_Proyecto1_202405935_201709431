@@ -117,7 +117,7 @@ class EjecutaInstrucciones:
     #función específica para ejecutar la instrucción de migrar máquina virtual
     #==========================================================================================================
     def ejecutar_migrar_vm(self, instruccion, lista_centros):
-        # SOPORTE DE PARÁMETROS:
+        #soporte para parámetros como id_vm 
         id_vm = instruccion.obtener_parametro("id")
         if id_vm is None:
             id_vm = instruccion.obtener_parametro("vmId")
@@ -147,31 +147,42 @@ class EjecutaInstrucciones:
         if vm is None:
             return f"Error: máquina virtual {id_vm} no encontrada en Centro de Datos: {centro_origen.nombre}"
         
-        # VERIFICACIÓN DE RECURSOS 
+        #verificación de recursos para ejecutar una máquina virtual 
         cpu_disponible = centro_destino.recursos.obtener_cpu_disponible()
         ram_disponible = centro_destino.recursos.obtener_ram_disponible()
         almacenamiento_disponible = centro_destino.recursos.obtener_almacenamiento_disponible()
         
+
+        #si los nucleos totales son mayores al cpu diposible se retorna un mensaje de insuficiencia de recursos
         if vm.recursos.nucleos_totales > cpu_disponible:
             return f"Error: CPU insuficiente en destino. Disponible: {cpu_disponible}, Requerido: {vm.recursos.nucleos_totales}"
         
+        #si la memoria RAM máxima es mayor a la memoria disponible se retorna un error de insuficiencia de recursos
         if vm.recursos.memoria_maxima > ram_disponible:
             return f"Error: RAM insuficiente en destino. Disponible: {ram_disponible}, Requerido: {vm.recursos.memoria_maxima}"
         
+        #si el espacio máximo es mayor al espacio dispoible se retorna un mensaje de insuficiencia 
         if vm.recursos.espacio_maximo > almacenamiento_disponible:
             return f"Error: Almacenamiento insuficiente en destino. Disponible: {almacenamiento_disponible}, Requerido: {vm.recursos.espacio_maximo}"
         
+        #mensaje de éxito que se imprime si se logra eliminar una vm
         exito = self.eliminar_vm_de_centro(centro_origen, id_vm)
         if not exito:
             return f"Error: No se pudo eliminar VM {id_vm} del centro origen"
-    
+
+        #si hay éxito, se inserta la vm en el centro de destino
         centro_destino.maquinas_virtuales.insertar(vm)
-    
+
+        #se asignan los recursos al centro de destino
         centro_destino.recursos.asignar_recursos(vm.recursos.nucleos_totales, vm.recursos.memoria_maxima, vm.recursos.espacio_maximo)
         vm.centro_asignado = centro_destino.id_centro
     
         return f"VM {id_vm} migrada exitosamente a {centro_destino.nombre}"
     
+
+
+
+    #================ función Ejecutar Procesos de Solicitudes ==============================================
     def ejecutar_procesar_solicitudes(self, instruccion, lista_centros, gestor_solicitudes):
         cantidad_str = instruccion.obtener_parametro("cantidad")
         
@@ -186,15 +197,18 @@ class EjecutaInstrucciones:
         if gestor_solicitudes is None:
             return "Error: No hay gestor de solicitudes disponible"
         
-        # Uso de variables simples para contadores
+        # Uso de variables simples para contadores ya que se deben inicializar 
         procesadas = 0
         exitosas = 0
         fallidas = 0
         
+        #mientras la cantidad de ordenes sea mayor a las procesadas y la cola no esté vacía, se procesa la siguiente solicitud:
         while procesadas < cantidad and not gestor_solicitudes.cola_solicitudes.esta_vacia():
-            # --- CAMBIO CRÍTICO: Recibe solo el estado booleano ---
+            
+
             exito = gestor_solicitudes.procesar_siguiente_solicitud(lista_centros)
             
+            #si se tiene éxito al procesar la solicitud, se modifican los contadores
             if exito:
                 exitosas += 1
             else:
@@ -205,11 +219,13 @@ class EjecutaInstrucciones:
         return f"Procesadas: {procesadas}, Completadas: {exitosas}, Fallidas: {fallidas}"
     
 
+    # ==================== función para buscar centro por ID ===============================
     def buscar_centro_por_id(self, lista_centros, id_centro):
+        #si no hay centros en la lista se retorna None
         if lista_centros.primero is None:
             return None
     
-        id_buscado_normalizado = str(id_centro).strip() 
+        id_buscado_normalizado = str(id_centro).strip() #limpiamos la entrada del id del centro
     
         nodo_centro_actual = lista_centros.primero
         while nodo_centro_actual is not None:
@@ -218,7 +234,8 @@ class EjecutaInstrucciones:
                 nodo_centro_actual = nodo_centro_actual.siguiente
                 continue
 
-            id_guardado_normalizado = str(nodo_centro_actual.dato.id_centro).strip() 
+            id_guardado_normalizado = str(nodo_centro_actual.dato.id_centro).strip() #limpiando el id que se guarda en la variable para evitar fallos al comparar
+
         
             if id_guardado_normalizado == id_buscado_normalizado:
                 return nodo_centro_actual.dato 
@@ -227,11 +244,14 @@ class EjecutaInstrucciones:
     
         return None
 
+
+    #============================= función para buscar vm en un centro ================================00
     def buscar_vm_en_centro(self, centro, id_vm):
+        #en caso de tener la lista vacía, retornar None
         if centro.maquinas_virtuales.primero is None:
             return None
     
-        id_buscada_normalizada = str(id_vm).strip() 
+        id_buscada_normalizada = str(id_vm).strip() #limpiando el dato de entrada del id de la vm
 
         nodo_vm_actual = centro.maquinas_virtuales.primero
         while nodo_vm_actual is not None:
@@ -249,7 +269,10 @@ class EjecutaInstrucciones:
     
         return None
     
+
+    #================ función para eliminar vm de los centros ========================
     def eliminar_vm_de_centro(self, centro, id_vm):
+        #si la lista está vacía, se retorna None
         if centro.maquinas_virtuales.primero is None:
             return False
         
@@ -260,7 +283,7 @@ class EjecutaInstrucciones:
             if nodo_vm_actual.dato.id_vm == id_vm:
                 vm_a_eliminar = nodo_vm_actual.dato
                 
-                # Liberamos los recursos
+                # Liberamos los recursos 
                 centro.recursos.liberar_recursos(vm_a_eliminar.recursos.nucleos_totales, vm_a_eliminar.recursos.memoria_maxima, vm_a_eliminar.recursos.espacio_maximo)
                 
                 # Eliminamos el nodo
